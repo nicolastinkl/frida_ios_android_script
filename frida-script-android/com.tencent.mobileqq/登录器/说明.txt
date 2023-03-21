@@ -1,0 +1,4 @@
+openid|access_token|pay_token|pfkey|auth_time|appid    这是完整 6各参数
+说明：加密方法：先对 传入的原始值做简单的xor算法，再做base64加密
+例：openid|access_token|||appid|auth_time
+可以传入2-6个值，但对前两个做了校验，openid和access_token不能为空
