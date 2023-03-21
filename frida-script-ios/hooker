@@ -1,0 +1,6 @@
+#!/bin/bash
+echo "hooking $1" > log
+date | tee -ai log
+#frida $HOOKER_DRIVER -l $1 com.blockchainvault | tee -ai log%
+#frida-ps -Uai
+frida-trace -U -f "$1" "$2"
