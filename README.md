@@ -11,4 +11,4 @@ frida-trace -U -f "$1" "$2"
 <<<
 
 
-![]()
+![](https://github.com/nicolastinkl/frida_ios_android_script/blob/main/preview/Snipaste_2023-03-21_12-15-40.png?raw=true)
