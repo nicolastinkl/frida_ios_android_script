@@ -206,7 +206,8 @@ Interceptor.attach(Module.findExportByName('libcommonCrypto.dylib', 'CCCrypt'), 
 
             var array = new Uint8Array(Memory.readByteArray(this.inBuffer, this.inLength.toInt32()));
             // console.log("[+] Before Decrypt: " + base64encode(bin2string(array)));
-            LOG("[+] Before Decrypt: " + base64encode(bin2string(array)), { c: Color.Gray }); 
+            //LOG("[+] Before Decrypt: " + base64encode(bin2string(array)), { c: Color.Gray }); 
+            LOG("[+] Before Decrypt: 数据过大，忽略 ", { c: Color.Gray }); 
             
             console.log(Memory.readByteArray(this.keyBytes, this.keyLength.toInt32()));
             if (this.keyLength.toInt32() == 16) {console.log("[+] KEY Length --> 128");}

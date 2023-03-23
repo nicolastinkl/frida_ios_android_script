@@ -84,7 +84,7 @@ function trace(pattern) {
                 }
             }
             if (Traceflag === 0) {
-                LOG("Tracing "+ target.name +" "+ target.address, { c: Color.Gray });
+                LOG("Tracing - Name: "+ target.name +" address: "+ target.address, { c: Color.Gray });
                 // console.log("Tracing " + target.name +" "+ target.address);
                 traceObjC(target.address, target.name);
             }
@@ -135,6 +135,107 @@ function traceObjC(impl, name) {
                 if (CheckObjc(args[0])) {
                     // 无参数的Objective-C方法，打印args[0]
                     var param1 = new ObjC.Object(args[0]);
+                    LOG("[+] 类 args[0]: " + param1, { c: Color.Gray });
+                    // console.log("[+] args[0]: " + param1);
+                    console.log("[+] type: " + param1.$className);
+                }
+
+            } else {  // 无参数的逻辑处理,如-[NSString md5]
+                if (CheckObjc(args[0])) {
+                    // 无参数的Objective-C方法，打印args[0]
+                    var param1 = new ObjC.Object(args[0]);
+                    LOG("[+] 类 args[0]: " + param1, { c: Color.Gray });
+                    // console.log("[+] args[0]: " + param1);
+                    console.log("[+] type: " + param1.$className);
+                }
+            }
+        },
+
+        onLeave: function(retval) {
+            // console.log("[+] retval objc: " + CheckObjc(retval));
+            if (CheckObjc(retval)) {
+                printArg("retval: ", retval);
+            }
+
+            LOG("*** exited " + name, { c: Color.Green });
+            // console.log("*** exiting " + name);
+            console.log("[-] ---------------------------------------------------------------\n");
+        }
+    });
+}
+
+// print helper
+function printArg(desc, arg) {
+    try {
+        var objcParam = ObjC.Object(arg);
+        var objcType = objcParam.$className;
+
+        // [+] arg3: {length = 36, bytes = 0x37374131 30324232 2d323736 462d3435 ... 34333430 43313143 }
+        // [+] type: NSConcreteMutableData
+        // ==>
+        // [+] arg3: 77A102B2-276F-4542-8F33-0DF84340C11C
+        // [+] type: __NSCFString
+        
+
+        
+        if (desc.indexOf("arg") != -1 ) {   // 区分参数与返回值着色
+            LOG("[+] " + desc + objcParam, { c: Color.Gray }); 
+        } else {
+            //LOG("[+] " + desc + objcParam, { c: Color.Cyan });
+
+            if (objcType == "NSConcreteMutableData" || objcType == "_NSInlineData" || objcType == "NSConcreteData") {    // 将NSConcreteMutableData等类型转化为NSString打印
+                try {
+                    // objcParam = NSData2NSString(objcParam);  // 非可见字符不会报异常
+                    objcParam = objcParam.bytes().readUtf8String(objcParam.length());
+                } catch(e){
+                    objcParam = objcParam.CKHexString();     // 非可见字符, 打印hex
+                }
+                console.log("[返回值]" + objcType + " NSData 类型数据，不显示");                
+            }else{
+                LOG("[返回值] "+ objcType + desc + objcParam, { c: Color.Cyan }); 
+            }
+        }
+        // console.log("[+] " + desc + objcParam);
+
+        console.log("[+] type: " + objcType);
+    } catch(err) {
+        console.log("error: "+desc + arg);
+    }
+}
+
+
+
+// trace ObjC methods
+function traceAESUtils(impl, name) {
+    Interceptor.attach(impl, {
+        onEnter: function(args) {
+            // debug only the intended calls
+             console.log("Tracing " + name);
+            console.log("[+] ---------------------------------------------------------------");
+            LOG("*** entering " + name, { c: Color.Green });
+            // console.log("*** entered " + name);
+
+            // print full backtrace
+            // console.log('\tACCURATE Backtrace:\n\t' + Thread.backtrace(this.context,Backtracer.ACCURATE).map(DebugSymbol.fromAddress).join('\n\t'));
+            // console.log('\tFUZZY Backtrace:\n\t' + Thread.backtrace(this.context,Backtracer.FUZZY).map(DebugSymbol.fromAddress).join('\n\t'));
+
+            // print caller
+            // console.log("[+] Caller: " + DebugSymbol.fromAddress(this.returnAddress));
+
+            // print args
+            if (name.indexOf(":") !== -1) {  // 有参数的逻辑处理
+                var param = name.split(":");
+                param[0] = param[0].split(" ")[1];
+                for (var i = 0; i < param.length - 1; i++) {
+                    // console.log("[+] args"+"["+ (i+2) +"] objc: " + CheckObjc(args[i + 2]));
+                    if (CheckObjc(args[i + 2])) {
+                        printArg("arg"+(i+2)+" "+ param[i] + ": ", args[i + 2]);
+                    }
+                }
+                // 防止遗漏Receiver对象
+                if (CheckObjc(args[0])) {
+                    // 无参数的Objective-C方法，打印args[0]
+                    var param1 = new ObjC.Object(args[0]);
                     LOG("[+] args[0]: " + param1, { c: Color.Gray });
                     // console.log("[+] args[0]: " + param1);
                     console.log("[+] type: " + param1.$className);
@@ -154,7 +255,7 @@ function traceObjC(impl, name) {
         onLeave: function(retval) {
             // console.log("[+] retval objc: " + CheckObjc(retval));
             if (CheckObjc(retval)) {
-                printArg("retval: ", retval);
+               // printArg("retval: ", retval);
             }
 
             LOG("*** exiting " + name, { c: Color.Green });
@@ -164,60 +265,42 @@ function traceObjC(impl, name) {
     });
 }
 
-// print helper
-function printArg(desc, arg) {
-    try {
-        var objcParam = ObjC.Object(arg);
-        var objcType = objcParam.$className;
-
-        // [+] arg3: {length = 36, bytes = 0x37374131 30324232 2d323736 462d3435 ... 34333430 43313143 }
-        // [+] type: NSConcreteMutableData
-        // ==>
-        // [+] arg3: 77A102B2-276F-4542-8F33-0DF84340C11C
-        // [+] type: __NSCFString
-        // if (objcParam.$className == "NSConcreteMutableData" || objcParam.$className == "_NSInlineData") {    // 将NSConcreteMutableData等类型转化为NSString打印
-        //     try {
-        //         // objcParam = NSData2NSString(objcParam);  // 非可见字符不会报异常
-        //         objcParam = objcParam.bytes().readUtf8String(objcParam.length());
-        //     } catch(e){
-        //         objcParam = objcParam.CKHexString();     // 非可见字符, 打印hex
-        //     }
-        // }
-
-        if (desc.indexOf("arg") != -1 ) {   // 区分参数与返回值着色
-            LOG("[+] " + desc + objcParam, { c: Color.Gray }); 
-        } else {
-            LOG("[+] " + desc + objcParam, { c: Color.Cyan });
-        }
-        // console.log("[+] " + desc + objcParam);
-
-        console.log("[+] type: " + objcType);
-    } catch(err) {
-        console.log(desc + arg);
-    }
-}
-
-
 // ----------------------usage examples---------------------------
 if (ObjC.available) {
 
     // trace("*[* *md5*]"); //trace("*[* *MD5*]");
     // trace("*[* *Encode*]");
     // trace("*[* setObject:forKey:]");
-    // trace("+[* *des*:]");
+    // trace("+[* *write*:]");
     // trace("*[MD5 *]");
     // trace("*[* *Sign*:*]");
     // trace("*[* *base64*:*]");
     // trace("*[* *Encrypt*:*]");
+    
+    
     // trace("-[NSMutableURLRequest setValue:forHTTPHeaderField:]");
 
-    // trace("*[AESUtils *]");
-    // trace("-[RNServiceConnect rnSendGetReques*:*]");
+    // trace("*[AESUtils *]");  //文件协议解密类
+    
     // trace("*[ServerConnectUtils *]");
     
     // trace("*[AESUtils decryptFile*]");
     
-    trace("*[IJKFFMoviePlayerController *]");
+    trace("*[IJKFFMoviePlayerController setHudUrl*]"); //播放类，设置URL
+
+    // trace("*[M3U8Parser *]");
+    // trace("*[RNAESUtils *]");
+    // trace("*[M3U8DownloaderModel *]");  //离线下载
+    trace("-[RNServiceConnect rnSendGetReques*:*]");
+    // trace("*[PlayerItemModel *]");
+    trace("*[IJKFFMoviePlayerController initWithContentURL*]");
+
+
+    //文件解密类：jpg/webp/ts/m3u8
+    //LOG("Tracing "+ target.name +" "+ target.address, { c: Color.Gray });
+    // Tracing +[AESUtils decryptFile:sourceFile:destFile:] -[IJKFFMoviePlayerController setHudUrl:] address: 0x102b73954
+    // traceAESUtils("","+[AESUtils decryptFile:sourceFile:destFile:]");
+
 
 } else {
     send("error: Objective-C Runtime is not available!");
